@@ -22,6 +22,7 @@ export const App: React.FC = () => {
   const [isInputDisabled, setIsInputDisabled] = useState(false);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
   const [deletingTodoId, setDeletingTodoId] = useState<number | null>(null);
+  const isTodoClear = todos.some(todo => todo.completed);
 
   const loadTodos = async () => {
     setIsLoading(true);
@@ -45,8 +46,8 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setTodoClear(todos.some(todo => todo.completed));
-  }, [todos]);
+    setTodoClear(isTodoClear);
+  }, [isTodoClear]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,11 +68,6 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         setErrorMessage('Unable to delete a todo');
-        setTodos(currentTodos => {
-          return currentTodos.map(todo =>
-            todo.id === todoId ? { ...todo, deleteFailed: true } : todo,
-          );
-        });
       })
       .finally(() => {
         setIsLoading(false);
@@ -81,8 +77,6 @@ export const App: React.FC = () => {
 
   const clearCompletedTodos = async () => {
     setIsLoading(true);
-    setErrorMessage('');
-    setIsInputDisabled(true);
 
     try {
       const completedTodos = todos.filter(todo => todo.completed);
@@ -138,15 +132,14 @@ export const App: React.FC = () => {
     setTempTodo(tempNewTodo);
 
     try {
+      setNewTodo('');
+    } catch (error) {
+      setErrorMessage('Unable to add a todo');
+    } finally {
       const addedTodo = await addTodos(tempNewTodo);
 
       setTodos(prevTodos => [...prevTodos, addedTodo]);
       setTempTodo(null);
-      setNewTodo('');
-    } catch (error) {
-      setTempTodo(null);
-      setErrorMessage('Unable to add a todo');
-    } finally {
       setIsLoading(false);
       setIsInputDisabled(false);
     }
