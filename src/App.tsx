@@ -136,9 +136,6 @@ export const App: React.FC = () => {
     } catch (error) {
       setErrorMessage('Unable to add a todo');
     } finally {
-      const addedTodo = await addTodos(tempNewTodo);
-
-      setTodos(prevTodos => [...prevTodos, addedTodo]);
       setTempTodo(null);
       setIsLoading(false);
       setIsInputDisabled(false);
