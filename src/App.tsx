@@ -132,6 +132,8 @@ export const App: React.FC = () => {
     setTempTodo(tempNewTodo);
 
     try {
+      const addedTodo = await addTodos(tempNewTodo);
+      setTodos(prevTodos => [...prevTodos, addedTodo]);
       setNewTodo('');
     } catch (error) {
       setErrorMessage('Unable to add a todo');
