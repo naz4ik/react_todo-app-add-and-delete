@@ -1,20 +1,29 @@
-import React, { FormEventHandler } from 'react';
+import React, { FormEventHandler, useEffect, useRef } from 'react';
+import { Todo } from '../types/Todo';
 
 interface Props {
   handleSubmit: FormEventHandler<HTMLFormElement> | undefined;
-  newTodoInputRef: React.RefObject<HTMLInputElement>;
   newTodo: string;
   setNewTodo: (value: string) => void;
   isInputDisabled: boolean;
+  todos: Todo[];
 }
 
 export const Header: React.FC<Props> = ({
   handleSubmit,
-  newTodoInputRef,
   newTodo,
   setNewTodo,
   isInputDisabled,
+  todos,
 }) => {
+  const newTodoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (newTodoInputRef.current) {
+      newTodoInputRef.current.focus();
+    }
+  }, [todos, isInputDisabled]);
+
   return (
     <header className="todoapp__header">
       <button

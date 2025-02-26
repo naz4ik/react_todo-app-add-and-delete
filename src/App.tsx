@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserWarning } from './UserWarning';
 import { addTodos, deleteTodos, getTodos, USER_ID } from './api/todos';
 import { Header } from './components/header';
@@ -11,7 +11,6 @@ import { Todo } from './types/Todo';
 import { Filter } from './types/Filter';
 
 export const App: React.FC = () => {
-  const newTodoInputRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [newTodo, setNewTodo] = useState<string>('');
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -42,14 +41,11 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    loadTodos().then(() => {
-      newTodoInputRef.current?.focus();
-    });
+    loadTodos();
   }, []);
 
   useEffect(() => {
     setTodoClear(todos.some(todo => todo.completed));
-    newTodoInputRef.current?.focus();
   }, [todos]);
 
   useEffect(() => {
@@ -60,7 +56,7 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [errorMessage]);
 
-  function deleteTodo(todoId: number) {
+  const deleteTodo = (todoId: number) => {
     setDeletingTodoId(todoId);
     deleteTodos(todoId)
       .then(() => {
@@ -69,12 +65,19 @@ export const App: React.FC = () => {
           currentTodos.filter(todo => todo.id !== todoId),
         );
       })
-      .catch(() => setErrorMessage('Unable to delete a todo'))
+      .catch(() => {
+        setErrorMessage('Unable to delete a todo');
+        setTodos(currentTodos => {
+          return currentTodos.map(todo =>
+            todo.id === todoId ? { ...todo, deleteFailed: true } : todo,
+          );
+        });
+      })
       .finally(() => {
         setIsLoading(false);
         setDeletingTodoId(null);
       });
-  }
+  };
 
   const clearCompletedTodos = async () => {
     setIsLoading(true);
@@ -83,21 +86,30 @@ export const App: React.FC = () => {
 
     try {
       const completedTodos = todos.filter(todo => todo.completed);
+      const failedTodos: Todo[] = [];
 
-      await Promise.all(
-        completedTodos.map(todo =>
-          deleteTodos(todo.id).catch(() => {
-            setErrorMessage('Unable to delete a todo');
-          }),
+      for (const todo of completedTodos) {
+        try {
+          await deleteTodos(todo.id);
+        } catch (error) {
+          setErrorMessage('Unable to delete a todo');
+          failedTodos.push(todo);
+        }
+      }
+
+      setTodos(currentTodos =>
+        currentTodos.filter(
+          todo => !todo.completed || failedTodos.includes(todo),
         ),
       );
 
-      const remainingTodos = todos.filter(todo => !todo.completed);
+      if (failedTodos.length > 0) {
+        setTodos(prevTodos => [...prevTodos, ...failedTodos]);
+      }
 
-      setTodos(remainingTodos);
       setTodoClear(false);
     } catch (error) {
-      setErrorMessage('Unable to clear completed todos');
+      setErrorMessage('Unable to delete a todo');
     } finally {
       setIsInputDisabled(false);
       setIsLoading(false);
@@ -137,24 +149,18 @@ export const App: React.FC = () => {
     } finally {
       setIsLoading(false);
       setIsInputDisabled(false);
-      newTodoInputRef.current?.focus();
     }
   };
 
   const filteredTodos = todos.filter(todo => {
-    if (newFilter === Filter.All) {
-      return true;
+    switch (newFilter) {
+      case Filter.Active:
+        return !todo.completed;
+      case Filter.Completed:
+        return todo.completed;
+      default:
+        return true;
     }
-
-    if (newFilter === Filter.Active) {
-      return !todo.completed;
-    }
-
-    if (newFilter === Filter.Completed) {
-      return todo.completed;
-    }
-
-    return true;
   });
 
   if (!USER_ID) {
@@ -167,9 +173,9 @@ export const App: React.FC = () => {
       <Header
         isInputDisabled={isInputDisabled}
         handleSubmit={onAdd}
-        newTodoInputRef={newTodoInputRef}
         newTodo={newTodo}
         setNewTodo={setNewTodo}
+        todos={todos}
       />
 
       {todos.length > 0 && (
